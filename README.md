@@ -13,17 +13,18 @@ docker push ghcr.io/bimo-dk/nexus-base:22-alpine
 ## Usage in other services
 
 ```dockerfile
+# syntax=docker/dockerfile:1.6
 # Build stage (Node + dependencies)
-FROM ghcr.io/bimo-dk/nexus-base:22-alpine AS bimo-nexus-builder AS builder
+FROM ghcr.io/bimo-dk/nexus-base:22-alpine AS bimo-nexus-builder AS build
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json* ./
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci --prefer-offline
 COPY . .
 RUN npm run build
 
 # Runtime stage (nginx + healthcheck)
 FROM ghcr.io/bimo-dk/nexus-base:22-alpine AS bimo-nexus-runtime
-COPY --from=builder /app/dist/<service-name>/browser /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
 ```
